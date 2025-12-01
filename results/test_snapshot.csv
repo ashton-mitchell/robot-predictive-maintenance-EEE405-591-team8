@@ -1,0 +1,9 @@
+time (months),crack length (arbitary unit),item_id,ttf_months,Failure mode,fail_in_4m
+45,0.8767052386771492,7,45.0,Fatigue crack,0
+36,0.7602949539775065,14,36.0,Fatigue crack,0
+35,0.8783700563820382,18,35.0,Fatigue crack,0
+32,0.9154041142532056,20,32.0,Fatigue crack,0
+34,0.7981865931743114,28,33.0,Control board failure,0
+39,0.8911359239734602,38,39.0,Fatigue crack,0
+34,0.8084186257423981,42,34.0,Fatigue crack,0
+42,0.8421941803436186,49,42.0,Fatigue crack,0

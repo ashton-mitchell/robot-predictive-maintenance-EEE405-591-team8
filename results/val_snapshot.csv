@@ -1,0 +1,8 @@
+time (months),crack length (arbitary unit),item_id,ttf_months,Failure mode,fail_in_4m
+2,0.010528072865091,2,1.0,Infant mortality,1
+39,0.793805966317495,10,39.0,Fatigue crack,0
+39,0.8628947717947789,22,39.0,Fatigue crack,0
+35,0.9383059092456144,23,35.0,Fatigue crack,0
+43,0.879798529456629,35,43.0,Fatigue crack,0
+44,0.7400393855400222,40,44.0,Fatigue crack,0
+51,0.9721885738120046,43,51.0,Fatigue crack,0
