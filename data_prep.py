@@ -129,7 +129,7 @@ def build_feature_engineered_snapshot(degradation_df):
         df_item = df_item.sort_values("time (months)")
 
         time = df_item["time (months)"].values
-        crack = df_item["crack length (arbitary unit)"].values
+        crack = df_item["crack length (arbitrary unit)"].values
 
         last_time = time[-1]
         last_crack = crack[-1]
