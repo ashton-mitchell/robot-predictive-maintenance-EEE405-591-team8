@@ -30,34 +30,74 @@ def build_train_sequences(
 
     crack_mean, crack_std = compute_crack_norm_stats(degradation_df)
 
+    max_prefixes_per_item = 5
+    min_prefix_len = 3
+    late_start_frac = 0.6  # start sampling prefixes from ~60% into the sequence
+
     for item_id, df_item in degradation_df.groupby("item_id"):
         df_item = df_item.sort_values("time (months)")
 
         time_raw = df_item["time (months)"].to_numpy(dtype=np.float32)
         crack_raw = df_item["crack length (arbitary unit)"].to_numpy(dtype=np.float32)
 
-        t_max = time_raw.max()
-        if t_max > 0:
-            time = time_raw / t_max
-        else:
-            time = time_raw
-
-        crack = (crack_raw - crack_mean) / crack_std
-
-        features = np.stack([time, crack], axis=1)
-        seq_tensor = torch.from_numpy(features)
-
         row = failure_df.loc[failure_df["item_id"] == item_id]
         if row.empty:
             continue
-        ttf = float(row["Time to failure (months)"].iloc[0])
+        t_fail = float(row["Time to failure (months)"].iloc[0])
 
-        sequences.append(seq_tensor)
-        targets.append(ttf)
-        item_ids.append(int(item_id))
+        n = len(time_raw)
+        if n < min_prefix_len:
+            continue
+
+        # Prefer prefixes from the later part of life
+        late_start_idx = int(n * late_start_frac)
+        base_start_idx = min_prefix_len - 1
+        start_idx = max(base_start_idx, late_start_idx)
+        end_idx = n - 1
+
+        if start_idx > end_idx:
+            start_idx = max(base_start_idx, n - 2)
+            end_idx = n - 1
+            if start_idx > end_idx:
+                continue
+
+        num_candidates = end_idx - start_idx + 1
+        if num_candidates <= 0:
+            continue
+
+        num_prefixes = min(max_prefixes_per_item, num_candidates)
+        prefix_indices = np.linspace(
+            start_idx,
+            end_idx,
+            num=num_prefixes,
+            dtype=int,
+        )
+
+        t_max = time_raw.max()
+        if t_max <= 0:
+            t_max = 1.0
+
+        for k in prefix_indices:
+            time_prefix_raw = time_raw[: k + 1]
+            crack_prefix_raw = crack_raw[: k + 1]
+
+            time_norm = time_prefix_raw / t_max
+            crack_norm = (crack_prefix_raw - crack_mean) / crack_std
+
+            features = np.stack([time_norm, crack_norm], axis=1)
+            seq_tensor = torch.from_numpy(features)
+
+            t_current = float(time_prefix_raw[-1])
+            rul_k = t_fail - t_current
+
+            sequences.append(seq_tensor)
+            targets.append(rul_k)
+            item_ids.append(int(item_id))
 
     targets_tensor = torch.tensor(targets, dtype=torch.float32)
     return sequences, targets_tensor, item_ids
+
+
 
 
 def build_test_sequences(

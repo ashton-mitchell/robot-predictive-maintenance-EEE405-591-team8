@@ -6,6 +6,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 import pandas as pd
+import matplotlib.pyplot as plt
 
 import lstm_data
 
@@ -45,9 +46,10 @@ def eval_one_epoch(
     loader: DataLoader,
     loss_fn: nn.Module,
     device: torch.device,
-) -> float:
+) -> tuple[float, float]:
     model.eval()
     total_loss = 0.0
+    total_abs_err = 0.0
     n_samples = 0
 
     with torch.no_grad():
@@ -61,9 +63,12 @@ def eval_one_epoch(
 
             batch_size = y.size(0)
             total_loss += loss.item() * batch_size
+            total_abs_err += torch.abs(preds - y).sum().item()
             n_samples += batch_size
 
-    return total_loss / max(n_samples, 1)
+    mean_loss = total_loss / max(n_samples, 1)
+    mean_mae = total_abs_err / max(n_samples, 1)
+    return mean_loss, mean_mae
 
 
 def predict_on_test(
@@ -138,11 +143,24 @@ def main(
     best_val_loss = float("inf")
     best_model_path = results_path / "lstm_rul_best.pt"
 
+    train_losses: list[float] = []
+    val_losses: list[float] = []
+    val_maes: list[float] = []
+
     for epoch in range(1, epochs + 1):
         train_loss = train_one_epoch(model, train_loader, optimizer, loss_fn, device)
-        val_loss = eval_one_epoch(model, val_loader, loss_fn, device)
+        val_loss, val_mae = eval_one_epoch(model, val_loader, loss_fn, device)
 
-        print(f"Epoch {epoch:03d}: train_loss={train_loss:.4f}  val_loss={val_loss:.4f}")
+        train_losses.append(train_loss)
+        val_losses.append(val_loss)
+        val_maes.append(val_mae)
+
+        print(
+            f"Epoch {epoch:03d}: "
+            f"train_loss={train_loss:.4f}  "
+            f"val_loss={val_loss:.4f}  "
+            f"val_mae={val_mae:.4f}"
+        )
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
@@ -150,6 +168,34 @@ def main(
             print(f"  New best model saved to {best_model_path}")
 
     print(f"Best validation loss: {best_val_loss:.4f}")
+
+    # Plot training vs validation loss
+    epochs_axis = range(1, epochs + 1)
+
+    plt.figure()
+    plt.plot(epochs_axis, train_losses, label="Train MSE")
+    plt.plot(epochs_axis, val_losses, label="Val MSE")
+    plt.xlabel("Epoch")
+    plt.ylabel("MSE Loss")
+    plt.legend()
+    plt.tight_layout()
+    loss_plot_path = results_path / "lstm_loss_curve.png"
+    plt.savefig(loss_plot_path)
+    plt.close()
+    print(f"Saved loss curve to: {loss_plot_path}")
+
+    # Plot validation MAE
+    plt.figure()
+    plt.plot(epochs_axis, val_maes, label="Val MAE")
+    plt.xlabel("Epoch")
+    plt.ylabel("Mean Absolute Error")
+    plt.legend()
+    plt.tight_layout()
+    mae_plot_path = results_path / "lstm_val_mae_curve.png"
+    plt.savefig(mae_plot_path)
+    plt.close()
+    print(f"Saved val MAE curve to: {mae_plot_path}")
+
     model.load_state_dict(torch.load(best_model_path, map_location=device))
 
     item_ids, preds = predict_on_test(model, test_loader, device)
