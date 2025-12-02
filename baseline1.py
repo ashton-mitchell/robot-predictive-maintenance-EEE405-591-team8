@@ -33,9 +33,12 @@ predicted_failure.fit(X,y1)
 w = predicted_failure.coef_
 yP = predicted_failure.predict(X)
 mse = mean_squared_error(y1, yP)
+r_squared = predicted_failure.score(X, y1)
+
 print("Predictions", yP)
 
 print("Error in Predicted Failure Months:", mse)
+print("R-Squared:", r_squared)
 print("Weights: ", w)
 log = LogisticRegression(class_weight='balanced', C=10000)
 log.fit(X,y2)
